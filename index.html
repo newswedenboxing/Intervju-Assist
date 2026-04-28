@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#00ffb2" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IVAI" />
+  <meta name="description" content="AI-driven intervjuassistent – offline-first med krypterad molnbackup" />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- Google Fonts (cachas av SW vid first load) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <title>IVAI Coach</title>
+
+  <style>
+    /* Minimal splash while React loads */
+    body {
+      background: #080c0f;
+      margin: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      color: #00ffb2;
+    }
+    #root { min-height: 100vh; }
+    #splash {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-size: 11px;
+      letter-spacing: 3px;
+      opacity: 0.5;
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:.5} 50%{opacity:.2} }
+  </style>
+</head>
+<body>
+  <div id="root"><div id="splash">LADDAR IVAI COACH...</div></div>
+
+  <!-- React & Babel via CDN (bundlas vid deploy) -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- App bundle (inlined för enkel deploy) -->
+  <script type="text/babel" src="/app.js" data-type="module"></script>
+
+  <!-- Service Worker registrering -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          console.log('[IVAI] Service Worker registrerad:', reg.scope);
+
+          // Lyssna på uppdateringar
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[IVAI] Ny version tillgänglig – reload för att uppdatera');
+              }
+            });
+          });
+        } catch (err) {
+          console.warn('[IVAI] SW-registrering misslyckades:', err);
+        }
+      });
+
+      // Ta emot meddelanden från SW
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'TRIGGER_CLOUD_SYNC') {
+          window.dispatchEvent(new CustomEvent('ivai-cloud-sync'));
+        }
+      });
+    }
+  </script>
+</body>
+</html>
